@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% block title %}My Reports | PhishWise{% endblock %}
+
+{% block content %}
+<main class="max-w-5xl mx-auto px-4 py-8 pb-12">
+    <!-- Header Section -->
+    <div class="mb-8 border-b border-slate-200 pb-4">
+        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-3">
+            <i class="fa-solid fa-flag text-blue-600 text-2xl"></i>
+            <span>My Threat Reports</span>
+        </h1>
+        <p class="text-slate-500 mt-2">Track review status of suspicious websites you reported.</p>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 p-4 md:p-5 mb-6 shadow-sm">
+        <form method="GET" action="{% url 'history' %}" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <!-- Search Input -->
+            <div class="relative flex-1 w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input 
+                    type="text" 
+                    name="q" 
+                    value="{{ query }}" 
+                    placeholder="Search URL or threat type..." 
+                    class="w-full pl-9 pr-24 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all font-mono"
+                >
+                {% if query %}
+                <a href="{% url 'history' %}{% if selected_status and selected_status != 'all' %}?status={{ selected_status }}{% endif %}" class="absolute right-20 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 text-xs transition-colors" title="Clear search">
+                    <i class="fa-solid fa-circle-xmark text-sm"></i>
+                </a>
+                {% endif %}
+                <button type="submit" class="absolute right-1.5 top-1/2 -translate-y-1/2 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm shadow-blue-500/20 cursor-pointer">
+                    Search
+                </button>
+            </div>
+
+            <!-- Review Status Dropdown -->
+            <div class="relative w-full sm:w-56 shrink-0">
+                <i class="fa-solid fa-list-check absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                <select 
+                    name="status" 
+                    onchange="this.form.submit()"
+                    class="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                >
+                    <option value="all" {% if not selected_status or selected_status == 'all' %}selected{% endif %}>
+                        All
+                    </option>
+                    {% for opt in status_options %}
+                    <option value="{{ opt.key }}" {% if selected_status == opt.key %}selected{% endif %}>
+                        {{ opt.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+            </div>
+        </form>
+    </div>
+
+    <!-- Active Filter & Results Count Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 px-1">
+        <div class="text-xs text-slate-500 font-medium">
+            {% if query or selected_status and selected_status != 'all' %}
+                <span>Search results: Found <strong class="text-slate-800 font-bold">{{ total_count }}</strong> items</span>
+                {% if query %}
+                    <span class="ml-1">(Keyword: <strong class="text-blue-600">"{{ query }}"</strong>)</span>
+                {% endif %}
+                {% if selected_status and selected_status != 'all' %}
+                    <span class="ml-1">(Status: <strong class="text-blue-600">
+                        {% for opt in status_options %}{% if opt.key == selected_status %}{{ opt.label }}{% endif %}{% endfor %}
+                    </strong>)</span>
+                {% endif %}
+            {% else %}
+                <span>Total reports: <strong class="text-slate-800 font-bold">{{ total_count }}</strong> items</span>
+            {% endif %}
+        </div>
+        {% if query or selected_status and selected_status != 'all' %}
+        <a href="{% url 'history' %}" class="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-semibold transition-colors">
+            <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
+            <span>Clear all filters</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-900 text-xs uppercase font-black tracking-wider border-b border-slate-200">
+                    <tr>
+                        <th class="p-4 w-16 text-center">#</th>
+                        <th class="p-4">Reported URL</th>
+                        <th class="p-4">Threat Type</th>
+                        <th class="p-4">Submission Date</th>
+                        <th class="p-4 text-center">Review Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    {% for report in my_reports %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-4 text-center text-slate-400 font-bold">{{ report.id }}</td>
+                            <td class="p-4 font-medium text-slate-800 font-mono text-xs md:text-sm truncate max-w-[200px] md:max-w-xs">{{ report.url }}</td>
+                            <td class="p-4"><span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-bold border border-slate-200">{{ report.type }}</span></td>
+                            <td class="p-4 text-slate-500 text-xs md:text-sm">{{ report.date }}</td>
+                            <td class="p-4 text-center">
+                                {% if report.status == 'Verified' or report.status == 'approved' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">Approved</span>
+                                {% elif report.status == 'Pending' or report.status == 'pending' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">Pending</span>
+                                {% else %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">Rejected</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="p-12 text-center text-slate-500">
+                                {% if query or selected_status and selected_status != 'all' %}
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400 text-xl">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                    </div>
+                                    <p class="font-bold text-slate-700 text-sm">No threat reports matching your criteria</p>
+                                    <p class="text-xs text-slate-400 mt-1 mb-4">Try searching with another keyword or browse all statuses.</p>
+                                    <a href="{% url 'history' %}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-blue-500/20">
+                                        <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
+                                        <span>Clear filters</span>
+                                    </a>
+                                {% else %}
+                                    <p class="text-slate-400">No threat reports submitted yet.</p>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination Controls (5 items per page) -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200">
+        <p class="text-xs text-slate-500 font-medium order-2 sm:order-1">
+            Page <strong class="text-slate-800 font-bold">{{ page_obj.number }}</strong> of <strong class="text-slate-800 font-bold">{{ page_obj.paginator.num_pages }}</strong>
+        </p>
+        
+        <nav class="inline-flex items-center gap-1 sm:gap-1.5 order-1 sm:order-2 flex-wrap justify-center" aria-label="Pagination">
+            <!-- Previous Button -->
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                <span>Previous</span>
+            </a>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-50 border border-slate-100 cursor-not-allowed">
+                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                <span>Previous</span>
+            </span>
+            {% endif %}
+
+            <!-- Page Number Buttons -->
+            <div class="flex items-center gap-1 px-0.5">
+                {% for num in elided_page_range %}
+                    {% if num == page_obj.paginator.ELLIPSIS %}
+                    <span class="w-7 h-8 flex items-center justify-center text-xs text-slate-400 font-bold select-none">…</span>
+                    {% elif page_obj.number == num %}
+                    <span class="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-sm shadow-blue-500/20">
+                        {{ num }}
+                    </span>
+                    {% else %}
+                    <a href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="w-8 h-8 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold flex items-center justify-center transition-all hover:border-slate-300">
+                        {{ num }}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Next Button -->
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+                <span>Next</span>
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </a>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-50 border border-slate-100 cursor-not-allowed">
+                <span>Next</span>
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </span>
+            {% endif %}
+        </nav>
+    </div>
+    {% elif page_obj.paginator.count > 0 %}
+    <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200">
+        <p class="text-xs text-slate-500 font-medium order-2 sm:order-1">
+            Page <strong class="text-slate-800 font-bold">1</strong> of <strong class="text-slate-800 font-bold">1</strong> ({{ page_obj.paginator.count }} items)
+        </p>
+        <nav class="inline-flex items-center gap-1.5 order-1 sm:order-2" aria-label="Pagination">
+            <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-50 border border-slate-100 cursor-not-allowed">
+                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                <span>Previous</span>
+            </span>
+            <div class="flex items-center gap-1 px-1">
+                <span class="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-sm shadow-blue-500/20">
+                    1
+                </span>
+            </div>
+            <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-50 border border-slate-100 cursor-not-allowed">
+                <span>Next</span>
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </span>
+        </nav>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}
