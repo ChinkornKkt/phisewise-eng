@@ -56,7 +56,7 @@ Ensure Python 3.10+ is installed on your system.
 
 ### 2. Navigate to Project Directory
 ```bash
-cd phishwise-django-en
+cd phishwise-django-eng
 ```
 
 ### 3. Install Dependencies

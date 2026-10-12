@@ -499,6 +499,18 @@ def extract_urls_from_text(text):
             else:
                 port_part = ''
                 
+        # Clean spaces around dots and hyphens within domain
+        domain_part = re.sub(r'\s*([.-])\s*', r'\1', domain_part).strip()
+
+        # If domain_part contains a valid TLD or IP followed by whitespace, truncate trailing text
+        domain_match = re.search(rf'^(.*?\.(?:{tlds}))(?:\s+.*|$)', domain_part, flags=re.IGNORECASE)
+        if domain_match:
+            domain_part = domain_match.group(1)
+        else:
+            ip_match = re.search(r'^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\s+.*|$)', domain_part)
+            if ip_match:
+                domain_part = ip_match.group(1)
+
         # Domain part: spaces, commas, or semicolons -> dot '.'
         domain_part = re.sub(r'[\s,;]+', '.', domain_part).strip('.')
         domain_part = re.sub(r'\.+', '.', domain_part)
@@ -1852,7 +1864,7 @@ def article_upload_image_view(request):
     allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
     ext = os.path.splitext(uploaded_file.name)[1].lower()
     if ext not in allowed_extensions:
-        return JsonResponse({"success": False, "error": "Only image formats (.jpg, .png, .webp, .gif) are supported."}, status=400)
+        return JsonResponse({"success": False, "error": "Only image files are supported (.jpg, .png, .webp, .gif)."}, status=400)
 
     if uploaded_file.size > 10 * 1024 * 1024:
         return JsonResponse({"success": False, "error": "File size must not exceed 10MB."}, status=400)

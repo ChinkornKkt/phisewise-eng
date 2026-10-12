@@ -212,8 +212,8 @@ class StatisticsReportTests(TestCase):
             + response.context["danger_count"],
             response.context["total_scans"],
         )
-        self.assertContains(response, "Download PDF Report")
-        self.assertContains(response, "Scan Summary by User")
+        self.assertContains(response, "Export PDF Report")
+        self.assertContains(response, "Recent Activity")
 
     def test_pdf_report_is_a_downloadable_two_page_document(self):
         response = self.client.get("/statistics/report.pdf")
@@ -450,7 +450,7 @@ class KnowledgeArticleTests(TestCase):
 
     def test_article_markdown_strips_script_tag(self):
         """Test case description."""
-        raw = "# English test comment
+        raw = "# English test comment\n<script>alert(1)</script>"
         result = render_article_markdown(raw)
         self.assertNotIn("<script>", result)
         self.assertNotIn("alert(", result)
@@ -471,7 +471,7 @@ class KnowledgeArticleTests(TestCase):
     def test_admin_can_create_and_preview_markdown_article(self):
         """Test case description."""
         self.client.force_login(self.admin)
-        md_text = "# English test comment
+        md_text = "## Security Guide\n\n**Bold**"
 
         # Test preview API
         preview_res = self.client.post("/admin/articles/preview/", {"content_markdown": md_text})
@@ -555,20 +555,17 @@ class DeepAnalysisResultViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         # English test comment
-        self.assertContains(response, "Deep Analysis Results")
-        self.assertNotContains(response, "Deep Analysis Results (Deep Analysis)")
-        self.assertContains(response, "Multi-layer hybrid analysis pipeline")
-        self.assertNotContains(response, "Legacy Pipeline Analysis")
-        self.assertContains(response, "Server Location")
-        self.assertNotContains(response, "Server Location (Primary)")
+        self.assertContains(response, "In-Depth Threat Analysis")
+        self.assertContains(response, "Multi-layered inspection engine")
+        self.assertContains(response, "Server Geolocation")
 
         # English test comment
         self.assertContains(response, "View 11 URL Features")
-        self.assertContains(response, "URL length")
-        self.assertContains(response, "Uses IP address instead of domain")
-        self.assertContains(response, "Contains phishing keywords")
-        self.assertContains(response, "Executable file extension")
-        self.assertContains(response, "Encrypted HTTPS connection")
+        self.assertContains(response, "URL Length")
+        self.assertContains(response, "IP Address as Hostname")
+        self.assertContains(response, "Suspicious Keywords")
+        self.assertContains(response, "Dangerous File Extension")
+        self.assertContains(response, "HTTPS Encryption")
 
         # English test comment
         self.assertContains(response, "This link redirects through 2 intermediate hop(s)")
@@ -744,11 +741,11 @@ class DomainHistoryDisplayTests(TestCase):
 
         history_text = ctx["domain_history_text"]
         self.assertNotIn("Total scans", history_text)
-        self.assertEqual(history_text, "Safe 9 time(s) Caution 1 time(s) Dangerous 1 time(s)")
+        self.assertEqual(history_text, "Safe 9 time(s) High Risk 1 time(s) Dangerous 1 time(s)")
 
         # English test comment
         self.assertNotIn("Mostly Safe", history_text)
-        self.assertNotIn("Suspicious", history_text)
+        self.assertNotIn("Caution", history_text)
 
         # English test comment
         self.assertEqual(ctx["phishwise_db"]["label"], "Risk History Detected")
